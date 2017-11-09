@@ -349,6 +349,40 @@ namespace WowPacketParser.Enums.Version
                 {
                     return "V7_1_5_23360";
                 }
+                case ClientVersionBuild.V7_2_0_23826:
+                case ClientVersionBuild.V7_2_0_23835:
+                case ClientVersionBuild.V7_2_0_23836:
+                case ClientVersionBuild.V7_2_0_23846:
+                case ClientVersionBuild.V7_2_0_23852:
+                case ClientVersionBuild.V7_2_0_23857:
+                case ClientVersionBuild.V7_2_0_23877:
+                case ClientVersionBuild.V7_2_0_23911:
+                case ClientVersionBuild.V7_2_0_23937:
+                case ClientVersionBuild.V7_2_0_24015:
+                {
+                    return "V7_2_0_23826";
+                }
+                case ClientVersionBuild.V7_2_5_24330:
+                case ClientVersionBuild.V7_2_5_24367:
+                case ClientVersionBuild.V7_2_5_24414:
+                case ClientVersionBuild.V7_2_5_24415:
+                case ClientVersionBuild.V7_2_5_24430:
+                case ClientVersionBuild.V7_2_5_24461:
+                case ClientVersionBuild.V7_2_5_24742:
+                {
+                    return "V7_2_5_24330";
+                }
+                case ClientVersionBuild.V7_3_0_24920:
+                case ClientVersionBuild.V7_3_0_24931:
+                case ClientVersionBuild.V7_3_0_25021:
+                case ClientVersionBuild.V7_3_0_25195:
+                {
+                    return "V7_3_0_24920";
+                }
+                case ClientVersionBuild.V7_3_2_25383:
+                {
+                    return "V7_3_2_25326";
+                }
                 default:
                 {
                     return "V3_3_5a_12340";

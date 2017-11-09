@@ -31,7 +31,10 @@ using WowPacketParser.Enums.Version.V6_2_4_21315;
 using WowPacketParser.Enums.Version.V7_0_3_22248;
 using WowPacketParser.Enums.Version.V7_1_0_22900;
 using WowPacketParser.Enums.Version.V7_1_5_23360;
-
+using WowPacketParser.Enums.Version.V7_2_0_23826;
+using WowPacketParser.Enums.Version.V7_2_5_24330;
+using WowPacketParser.Enums.Version.V7_3_0_24920;
+using WowPacketParser.Enums.Version.V7_3_2_25383;
 using WowPacketParser.Misc;
 
 namespace WowPacketParser.Enums.Version
@@ -326,6 +329,40 @@ namespace WowPacketParser.Enums.Version
                 case ClientVersionBuild.V7_1_5_23420:
                 {
                     return Opcodes_7_1_5.Opcodes(direction);
+                }
+                case ClientVersionBuild.V7_2_0_23826:
+                case ClientVersionBuild.V7_2_0_23835:
+                case ClientVersionBuild.V7_2_0_23836:
+                case ClientVersionBuild.V7_2_0_23846:
+                case ClientVersionBuild.V7_2_0_23852:
+                case ClientVersionBuild.V7_2_0_23857:
+                case ClientVersionBuild.V7_2_0_23877:
+                case ClientVersionBuild.V7_2_0_23911:
+                case ClientVersionBuild.V7_2_0_23937:
+                case ClientVersionBuild.V7_2_0_24015:
+                {
+                    return Opcodes_7_2_0.Opcodes(direction);
+                }
+                case ClientVersionBuild.V7_2_5_24330:
+                case ClientVersionBuild.V7_2_5_24367:
+                case ClientVersionBuild.V7_2_5_24414:
+                case ClientVersionBuild.V7_2_5_24415:
+                case ClientVersionBuild.V7_2_5_24430:
+                case ClientVersionBuild.V7_2_5_24461:
+                case ClientVersionBuild.V7_2_5_24742:
+                {
+                    return Opcodes_7_2_5.Opcodes(direction);
+                }
+                case ClientVersionBuild.V7_3_0_24920:
+                case ClientVersionBuild.V7_3_0_24931:
+                case ClientVersionBuild.V7_3_0_25021:
+                case ClientVersionBuild.V7_3_0_25195:
+                {
+                    return Opcodes_7_3_0.Opcodes(direction);
+                }
+                case ClientVersionBuild.V7_3_2_25383:
+                {
+                    return Opcodes_7_3_2.Opcodes(direction);
                 }
                 default:
                 {

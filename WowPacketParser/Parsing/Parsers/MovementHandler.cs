@@ -14,6 +14,7 @@ namespace WowPacketParser.Parsing.Parsers
         [ThreadStatic]
         public static uint CurrentMapId;
 
+        public static uint CurrentDifficultyID = 1;
         public static int CurrentPhaseMask = 1;
 
         public static readonly ConcurrentBag<ushort> ActivePhases = new ConcurrentBag<ushort>();
@@ -1261,7 +1262,7 @@ namespace WowPacketParser.Parsing.Parsers
         [Parser(Opcode.MSG_MOVE_WATER_WALK)]
         [Parser(Opcode.CMSG_MOVE_FALL_RESET, ClientVersionBuild.Zero, ClientVersionBuild.V4_3_4_15595)]
         [Parser(Opcode.CMSG_MOVE_SET_FLY)]
-        [Parser(Opcode.CMSG_MOVE_CHNG_TRANSPORT, ClientVersionBuild.Zero, ClientVersionBuild.V4_3_4_15595)]
+        [Parser(Opcode.CMSG_MOVE_CHANGE_TRANSPORT, ClientVersionBuild.Zero, ClientVersionBuild.V4_3_4_15595)]
         [Parser(Opcode.CMSG_MOVE_NOT_ACTIVE_MOVER, ClientVersionBuild.Zero, ClientVersionBuild.V4_3_4_15595)]
         [Parser(Opcode.CMSG_DISMISS_CONTROLLED_VEHICLE, ClientVersionBuild.Zero, ClientVersionBuild.V4_3_4_15595)]
         public static void HandleMovementMessages(Packet packet)

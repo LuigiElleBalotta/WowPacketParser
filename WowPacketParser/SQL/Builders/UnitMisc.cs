@@ -85,6 +85,20 @@ namespace WowPacketParser.SQL.Builders
                 });
         }
 
+        [BuilderMethod]
+        public static string CreatureTemplateScalingData()
+        {
+            if (Storage.CreatureTemplateScalings.IsEmpty())
+                return string.Empty;
+
+            if (!Settings.SQLOutputFlag.HasAnyFlagBit(SQLOutput.creature_template_scaling))
+                return string.Empty;
+
+            var templateDb = SQLDatabase.Get(Storage.CreatureTemplateScalings);
+
+            return SQLUtil.Compare(Settings.SQLOrderByKey ? Storage.CreatureTemplateScalings.OrderBy(x => x.Item1.Entry).ToArray() : Storage.CreatureTemplateScalings.ToArray(), templateDb, x => string.Empty);
+        }
+
         [BuilderMethod(Units = true)]
         public static string ModelData(Dictionary<WowGuid, Unit> units)
         {
@@ -116,7 +130,8 @@ namespace WowPacketParser.SQL.Builders
                     DisplayID = modelId
                 };
 
-                if (models.ContainsKey(model))
+                //if (models.ContainsKey(model))
+                if (models.Any(modelInfo => modelInfo.Item1.DisplayID == modelId))
                     continue;
 
                 var scale = npc.Size.GetValueOrDefault(1.0f);
@@ -143,6 +158,46 @@ namespace WowPacketParser.SQL.Builders
             var templatesDb = SQLDatabase.Get(Storage.NpcTrainers);
 
             return SQLUtil.Compare(Storage.NpcTrainers, templatesDb, StoreNameType.Unit);
+        }
+
+        [BuilderMethod]
+        public static string Trainer()
+        {
+            if (Storage.Trainers.IsEmpty())
+                return string.Empty;
+
+            if (!Settings.SQLOutputFlag.HasAnyFlagBit(SQLOutput.trainer))
+                return string.Empty;
+
+            var templatesDb = SQLDatabase.Get(Storage.Trainers);
+
+            return SQLUtil.Compare(Storage.Trainers, templatesDb, StoreNameType.None);
+        }
+
+        [BuilderMethod]
+        public static string TrainerSpell()
+        {
+            if (Storage.TrainerSpells.IsEmpty())
+                return string.Empty;
+
+            if (!Settings.SQLOutputFlag.HasAnyFlagBit(SQLOutput.trainer))
+                return string.Empty;
+
+            var templatesDb = SQLDatabase.Get(Storage.TrainerSpells);
+
+            return SQLUtil.Compare(Storage.TrainerSpells, templatesDb, StoreNameType.None);
+        }
+
+        [BuilderMethod]
+        public static string CreatureDefaultTrainer()
+        {
+            if (Storage.CreatureDefaultTrainers.IsEmpty())
+                return string.Empty;
+
+            if (!Settings.SQLOutputFlag.HasAnyFlagBit(SQLOutput.trainer))
+                return string.Empty;
+
+            return SQLUtil.Compare(Storage.CreatureDefaultTrainers, SQLDatabase.Get(Storage.CreatureDefaultTrainers), StoreNameType.None);
         }
 
         [BuilderMethod]
@@ -180,19 +235,33 @@ namespace WowPacketParser.SQL.Builders
                     if (!(npc.Value.Map.ToString(CultureInfo.InvariantCulture).MatchesFilters(Settings.MapFilters)))
                         continue;
 
-                if (npc.Value.Equipment == null || npc.Value.Equipment.Length != 3)
+                if (npc.Value.EquipmentItemId == null || npc.Value.EquipmentItemId.Length != 3)
                     continue;
 
-                if (npc.Value.Equipment[0] == 0 && npc.Value.Equipment[1] == 0 && npc.Value.Equipment[2] == 0)
+                if (npc.Value.EquipmentItemId[0] == 0 && npc.Value.EquipmentItemId[1] == 0 && npc.Value.EquipmentItemId[2] == 0)
                     continue;
 
                 var equip = new CreatureEquipment
                 {
                     CreatureID = npc.Key.GetEntry(),
-                    ItemID1 = npc.Value.Equipment[0],
-                    ItemID2 = npc.Value.Equipment[1],
-                    ItemID3 = npc.Value.Equipment[2]
+                    ItemID1 = npc.Value.EquipmentItemId[0],
+                    ItemID2 = npc.Value.EquipmentItemId[1],
+                    ItemID3 = npc.Value.EquipmentItemId[2]
                 };
+
+                if (npc.Value.EquipmentAppearanceModId != null && npc.Value.EquipmentAppearanceModId.Length == 3)
+                {
+                    equip.AppearanceModID1 = npc.Value.EquipmentAppearanceModId[0];
+                    equip.AppearanceModID2 = npc.Value.EquipmentAppearanceModId[1];
+                    equip.AppearanceModID3 = npc.Value.EquipmentAppearanceModId[2];
+                }
+
+                if (npc.Value.EquipmentItemVisual != null && npc.Value.EquipmentItemVisual.Length == 3)
+                {
+                    equip.ItemVisual1 = npc.Value.EquipmentItemVisual[0];
+                    equip.ItemVisual2 = npc.Value.EquipmentItemVisual[1];
+                    equip.ItemVisual3 = npc.Value.EquipmentItemVisual[2];
+                }
 
                 if (equips.Contains(equip))
                     continue;
@@ -212,6 +281,18 @@ namespace WowPacketParser.SQL.Builders
         }
 
         [BuilderMethod]
+        public static string PointsOfInterest()
+        {
+            if (Storage.GossipPOIs.IsEmpty())
+                return string.Empty;
+
+            if (!Settings.SQLOutputFlag.HasAnyFlagBit(SQLOutput.points_of_interest))
+                return string.Empty;
+
+            return SQLUtil.Compare(Storage.GossipPOIs, SQLDatabase.Get(Storage.GossipPOIs), StoreNameType.None);
+        }
+
+        [BuilderMethod]
         public static string Gossip()
         {
             if (Storage.Gossips.IsEmpty() && Storage.GossipMenuOptions.IsEmpty())
@@ -226,49 +307,12 @@ namespace WowPacketParser.SQL.Builders
 
             // `gossip_menu_option`
             if (Settings.SQLOutputFlag.HasAnyFlagBit(SQLOutput.gossip_menu_option))
-                result += SQLUtil.Compare(Storage.GossipMenuOptions, SQLDatabase.Get(Storage.GossipMenuOptions), StoreNameType.None);
-
-            return result;
-        }
-
-        [BuilderMethod]
-        public static string PointsOfInterest()
-        {
-            if (Storage.GossipPOIs.IsEmpty())
-                return string.Empty;
-
-            if (!Settings.SQLOutputFlag.HasAnyFlagBit(SQLOutput.points_of_interest))
-                return string.Empty;
-
-            var result = string.Empty;
-
-            if (!Storage.GossipSelects.IsEmpty())
             {
-                var gossipPOIsTable = new Dictionary<Tuple<uint, uint>, uint>();
-
-                foreach (var poi in Storage.GossipPOIs)
-                {
-                    foreach (var gossipSelect in Storage.GossipSelects)
-                    {
-                        var tuple = Tuple.Create(gossipSelect.Key.Item1, gossipSelect.Key.Item2);
-
-                        if (gossipPOIsTable.ContainsKey(tuple))
-                            continue;
-
-                        var timeSpan = poi.Item2 - gossipSelect.Value.Item2;
-                        if (timeSpan != null && timeSpan.Value.Duration() <= TimeSpan.FromSeconds(1))
-                            gossipPOIsTable.Add(tuple, poi.Item1.ID.GetValueOrDefault());
-                    }
-                }
-
-                var menuOptions = new DataBag<GossipMenuOption>();
-                foreach (var u in gossipPOIsTable)
-                    menuOptions.Add(new GossipMenuOption {ID = u.Key.Item2, MenuID = u.Key.Item1, ActionPoiID = u.Value});
-
-                result += SQLUtil.Compare(menuOptions, SQLDatabase.Get(menuOptions), StoreNameType.None);
+                result += SQLUtil.Compare(Storage.GossipMenuOptions, SQLDatabase.Get(Storage.GossipMenuOptions), t => t.BroadcastTextIDHelper);
+                result += SQLUtil.Compare(Storage.GossipMenuOptionActions, SQLDatabase.Get(Storage.GossipMenuOptionActions), StoreNameType.None);
+                result += SQLUtil.Compare(Storage.GossipMenuOptionBoxes, SQLDatabase.Get(Storage.GossipMenuOptionBoxes), t => t.BroadcastTextIdHelper);
+                result += SQLUtil.Compare(Storage.GossipMenuOptionTrainers, SQLDatabase.Get(Storage.GossipMenuOptionTrainers), StoreNameType.None);
             }
-
-            result += SQLUtil.Compare(Storage.GossipPOIs, SQLDatabase.Get(Storage.GossipPOIs), StoreNameType.None);
 
             return result;
         }
@@ -337,7 +381,7 @@ namespace WowPacketParser.SQL.Builders
             "Warrior Trainer"
         };
 
-        /*private static string GetSubName(int entry, bool withEntry)
+        private static string GetSubName(int entry, bool withEntry)
         {
             string name = StoreGetters.GetName(StoreNameType.Unit, entry, withEntry);
             int firstIndex = name.LastIndexOf('<');
@@ -348,23 +392,19 @@ namespace WowPacketParser.SQL.Builders
             return "";
         }
 
-        private static uint ProcessNpcFlags(string subName)
+        private static NPCFlags ProcessNpcFlags(string subName)
         {
             if (ProfessionTrainers.Contains(subName))
-                return (uint)NPCFlags.ProfessionTrainer;
+                return NPCFlags.ProfessionTrainer;
             if (ClassTrainers.Contains(subName))
-                return (uint)NPCFlags.ClassTrainer;
+                return NPCFlags.ClassTrainer;
 
             return 0;
-        }*/
+        }
 
-        // Non-WDB data but nevertheless data that should be saved to creature_template
-        /*[BuilderMethod(Units = true)]
-        public static string NpcTemplateNonWDB(Dictionary<WowGuid, Unit> units)
+        [BuilderMethod(true, Units = true)]
+        public static string CreatureTemplateNonWDB(Dictionary<WowGuid, Unit> units)
         {
-            if (ClientVersion.AddedInVersion(ClientType.WarlordsOfDraenor))
-                return string.Empty;
-
             if (units.Count == 0)
                 return string.Empty;
 
@@ -373,70 +413,99 @@ namespace WowPacketParser.SQL.Builders
 
             var levels = GetLevels(units);
 
-            var templates = new StoreDictionary<uint, UnitTemplateNonWDB>();
             foreach (var unit in units)
             {
-                if (templates.ContainsKey(unit.Key.GetEntry()))
+                if (Storage.CreatureTemplatesNonWDB.Any(creature => creature.Item1.Entry == unit.Key.GetEntry()))
                     continue;
 
                 var npc = unit.Value;
-                var template = new UnitTemplateNonWDB
+                int minLevel, maxLevel;
+
+                if (npc.ScalingMinLevel != null && npc.ScalingMaxLevel != null)
                 {
+                    minLevel = (int)npc.ScalingMinLevel;
+                    maxLevel = (int)npc.ScalingMaxLevel;
+                }
+                else
+                {
+                    minLevel = (int)levels[unit.Key.GetEntry()].Item1;
+                    maxLevel = (int)levels[unit.Key.GetEntry()].Item2;
+                }
+
+                var template = new CreatureTemplateNonWDB
+                {
+                    Entry = unit.Key.GetEntry(),
                     GossipMenuId = npc.GossipId,
-                    MinLevel = (int) levels[unit.Key.GetEntry()].Item1,
-                    MaxLevel = (int) levels[unit.Key.GetEntry()].Item2,
+                    MinLevel = minLevel,
+                    MaxLevel = maxLevel,
                     Faction = npc.Faction.GetValueOrDefault(35),
-                    NpcFlag = (uint) npc.NpcFlags.GetValueOrDefault(NPCFlags.None),
+                    NpcFlag = npc.NpcFlags.GetValueOrDefault(NPCFlags.None),
                     SpeedRun = npc.Movement.RunSpeed,
                     SpeedWalk = npc.Movement.WalkSpeed,
                     BaseAttackTime = npc.MeleeTime.GetValueOrDefault(2000),
                     RangedAttackTime = npc.RangedTime.GetValueOrDefault(2000),
-                    UnitClass = (uint) npc.Class.GetValueOrDefault(Class.Warrior),
-                    UnitFlag = (uint) npc.UnitFlags.GetValueOrDefault(UnitFlags.None),
-                    UnitFlag2 = (uint) npc.UnitFlags2.GetValueOrDefault(UnitFlags2.None),
-                    DynamicFlag = (uint) npc.DynamicFlags.GetValueOrDefault(UnitDynamicFlags.None),
-                    VehicleId = npc.Movement.VehicleId,
+                    UnitClass = (uint)npc.Class.GetValueOrDefault(Class.Warrior),
+                    UnitFlags = npc.UnitFlags.GetValueOrDefault(UnitFlags.None),
+                    UnitFlags2 = npc.UnitFlags2.GetValueOrDefault(UnitFlags2.None),
+                    UnitFlags3 = npc.UnitFlags3.GetValueOrDefault(UnitFlags3.None),
+                    DynamicFlags = npc.DynamicFlags.GetValueOrDefault(UnitDynamicFlags.None),
+                    VehicleID = npc.Movement.VehicleId,
                     HoverHeight = npc.HoverHeight.GetValueOrDefault(1.0f)
                 };
 
+                if (Settings.UseDBC)
+                {
+                    var creatureDiff = DBC.DBC.CreatureDifficulty.Where(diff => diff.Value.CreatureID == unit.Key.GetEntry());
+                    if (creatureDiff.Any())
+                    {
+                        template.MinLevel = creatureDiff.Select(lv => lv.Value.MinLevel).First();
+                        template.MaxLevel = creatureDiff.Select(lv => lv.Value.MaxLevel).First();
+                        template.Faction  = creatureDiff.Select(lv => lv.Value.FactionTemplateID).First();
+                    }
+                }
+
                 if (template.Faction == 1 || template.Faction == 2 || template.Faction == 3 ||
-                        template.Faction == 4 || template.Faction == 5 || template.Faction == 6 ||
-                        template.Faction == 115 || template.Faction == 116 || template.Faction == 1610 ||
-                        template.Faction == 1629 || template.Faction == 2203 || template.Faction == 2204) // player factions
+                    template.Faction == 4 || template.Faction == 5 || template.Faction == 6 ||
+                    template.Faction == 115 || template.Faction == 116 || template.Faction == 1610 ||
+                    template.Faction == 1629 || template.Faction == 2203 || template.Faction == 2204) // player factions
                     template.Faction = 35;
 
-                template.UnitFlag &= ~(uint)UnitFlags.IsInCombat;
-                template.UnitFlag &= ~(uint)UnitFlags.PetIsAttackingTarget;
-                template.UnitFlag &= ~(uint)UnitFlags.PlayerControlled;
-                template.UnitFlag &= ~(uint)UnitFlags.Silenced;
-                template.UnitFlag &= ~(uint)UnitFlags.PossessedByPlayer;
+                template.UnitFlags &= ~UnitFlags.IsInCombat;
+                template.UnitFlags &= ~UnitFlags.PetIsAttackingTarget;
+                template.UnitFlags &= ~UnitFlags.PlayerControlled;
+                template.UnitFlags &= ~UnitFlags.Silenced;
+                template.UnitFlags &= ~UnitFlags.PossessedByPlayer;
 
                 if (!ClientVersion.AddedInVersion(ClientType.WarlordsOfDraenor))
                 {
-                    template.DynamicFlag &= ~(uint)UnitDynamicFlags.Lootable;
-                    template.DynamicFlag &= ~(uint)UnitDynamicFlags.Tapped;
-                    template.DynamicFlag &= ~(uint)UnitDynamicFlags.TappedByPlayer;
-                    template.DynamicFlag &= ~(uint)UnitDynamicFlags.TappedByAllThreatList;
+                    template.DynamicFlags &= ~UnitDynamicFlags.Lootable;
+                    template.DynamicFlags &= ~UnitDynamicFlags.Tapped;
+                    template.DynamicFlags &= ~UnitDynamicFlags.TappedByPlayer;
+                    template.DynamicFlags &= ~UnitDynamicFlags.TappedByAllThreatList;
                 }
                 else
                 {
-                    template.DynamicFlag &= ~(uint)UnitDynamicFlagsWOD.Lootable;
-                    template.DynamicFlag &= ~(uint)UnitDynamicFlagsWOD.Tapped;
-                    template.DynamicFlag &= ~(uint)UnitDynamicFlagsWOD.TappedByPlayer;
-                    template.DynamicFlag &= ~(uint)UnitDynamicFlagsWOD.TappedByAllThreatList;
+                    template.DynamicFlagsWod &= ~UnitDynamicFlagsWOD.Lootable;
+                    template.DynamicFlagsWod &= ~UnitDynamicFlagsWOD.Tapped;
+                    template.DynamicFlagsWod &= ~UnitDynamicFlagsWOD.TappedByPlayer;
+                    template.DynamicFlagsWod &= ~UnitDynamicFlagsWOD.TappedByAllThreatList;
                 }
 
                 // has trainer flag but doesn't have prof nor class trainer flag
-                if ((template.NpcFlag & (uint) NPCFlags.Trainer) != 0 &&
-                    ((template.NpcFlag & (uint) NPCFlags.ProfessionTrainer) == 0 ||
-                     (template.NpcFlag & (uint) NPCFlags.ClassTrainer) == 0))
+                if ((template.NpcFlag & NPCFlags.Trainer) != 0 &&
+                    ((template.NpcFlag & NPCFlags.ProfessionTrainer) == 0 ||
+                     (template.NpcFlag & NPCFlags.ClassTrainer) == 0))
                 {
-                    CreatureTemplate creatureData;
                     var subname = GetSubName((int)unit.Key.GetEntry(), false); // Fall back
-                    if (Storage.CreatureTemplates.TryGetValue(unit.Key.GetEntry(), out creatureData))
+                    var entry = Storage.CreatureTemplates.Where(creature => creature.Item1.Entry == unit.Key.GetEntry());
+                    if (entry.Any())
                     {
-                        if (creatureData.SubName.Length > 0)
-                            template.NpcFlag |= ProcessNpcFlags(creatureData.SubName);
+                        var sub = entry.Select(creature => creature.Item1.SubName).First();
+                        if (sub.Length > 0)
+                        {
+                            template.NpcFlag |= ProcessNpcFlags(sub);
+                            Trace.WriteLine($"Entry: { unit.Key.GetEntry() } NpcFlag: { template.NpcFlag }");
+                        }
                         else // If the SubName doesn't exist or is cached, fall back to DB method
                             template.NpcFlag |= ProcessNpcFlags(subname);
                     }
@@ -444,105 +513,12 @@ namespace WowPacketParser.SQL.Builders
                         template.NpcFlag |= ProcessNpcFlags(subname);
                 }
 
-                templates.Add(unit.Key.GetEntry(), template);
+                Storage.CreatureTemplatesNonWDB.Add(template);
             }
 
-            var templatesDb = SQLDatabase.GetDict<uint, UnitTemplateNonWDB>(templates.Keys());
-            return SQLUtil.CompareDicts(templates, templatesDb, StoreNameType.Unit);
-        }*/
-
-        // Non-WDB data but nevertheless data that should be saved to creature_template
-        /*[BuilderMethod(Units = true)]
-        public static string CreatureDifficultyMisc(Dictionary<WowGuid, Unit> units)
-        {
-            if (Settings.TargetedDatabase != TargetedDatabase.WarlordsOfDraenor)
-                return string.Empty;
-
-            if (units.Count == 0)
-                return string.Empty;
-
-            if (!Settings.SQLOutputFlag.HasAnyFlagBit(SQLOutput.creature_template))
-                return string.Empty;
-
-            var templates = new StoreDictionary<uint, CreatureDifficultyMisc>();
-            foreach (var unit in units)
-            {
-                if (SQLDatabase.CreatureDifficultyStores != null)
-                {
-                    foreach (var creatureDiff in SQLDatabase.CreatureDifficultyStores)
-                    {
-                        if (!Utilities.EqualValues(unit.Key.GetEntry(), creatureDiff.Value.CreatureID))
-                            continue;
-
-                        if (templates.ContainsKey(creatureDiff.Key))
-                            continue;
-
-                        var npc = unit.Value;
-                        var template = new CreatureDifficultyMisc
-                        {
-                            CreatureId = unit.Key.GetEntry(),
-                            GossipMenuId = npc.GossipId,
-                            NpcFlag = (uint)npc.NpcFlags.GetValueOrDefault(NPCFlags.None),
-                            SpeedRun = npc.Movement.RunSpeed,
-                            SpeedWalk = npc.Movement.WalkSpeed,
-                            BaseAttackTime = npc.MeleeTime.GetValueOrDefault(2000),
-                            RangedAttackTime = npc.RangedTime.GetValueOrDefault(2000),
-                            UnitClass = (uint)npc.Class.GetValueOrDefault(Class.Warrior),
-                            UnitFlag = (uint)npc.UnitFlags.GetValueOrDefault(UnitFlags.None),
-                            UnitFlag2 = (uint)npc.UnitFlags2.GetValueOrDefault(UnitFlags2.None),
-                            DynamicFlag = (uint)npc.DynamicFlags.GetValueOrDefault(UnitDynamicFlags.None),
-                            VehicleId = npc.Movement.VehicleId,
-                            HoverHeight = npc.HoverHeight.GetValueOrDefault(1.0f)
-                        };
-
-                        template.UnitFlag &= ~(uint)UnitFlags.IsInCombat;
-                        template.UnitFlag &= ~(uint)UnitFlags.PetIsAttackingTarget;
-                        template.UnitFlag &= ~(uint)UnitFlags.PlayerControlled;
-                        template.UnitFlag &= ~(uint)UnitFlags.Silenced;
-                        template.UnitFlag &= ~(uint)UnitFlags.PossessedByPlayer;
-
-                        if (!ClientVersion.AddedInVersion(ClientType.WarlordsOfDraenor))
-                        {
-                            template.DynamicFlag &= ~(uint)UnitDynamicFlags.Lootable;
-                            template.DynamicFlag &= ~(uint)UnitDynamicFlags.Tapped;
-                            template.DynamicFlag &= ~(uint)UnitDynamicFlags.TappedByPlayer;
-                            template.DynamicFlag &= ~(uint)UnitDynamicFlags.TappedByAllThreatList;
-                        }
-                        else
-                        {
-                            template.DynamicFlag &= ~(uint)UnitDynamicFlagsWOD.Lootable;
-                            template.DynamicFlag &= ~(uint)UnitDynamicFlagsWOD.Tapped;
-                            template.DynamicFlag &= ~(uint)UnitDynamicFlagsWOD.TappedByPlayer;
-                            template.DynamicFlag &= ~(uint)UnitDynamicFlagsWOD.TappedByAllThreatList;
-                        }
-
-                        // has trainer flag but doesn't have prof nor class trainer flag
-                        if ((template.NpcFlag & (uint)NPCFlags.Trainer) != 0 &&
-                            ((template.NpcFlag & (uint)NPCFlags.ProfessionTrainer) == 0 ||
-                             (template.NpcFlag & (uint)NPCFlags.ClassTrainer) == 0))
-                        {
-                            var name = StoreGetters.GetName(StoreNameType.Unit, (int)unit.Key.GetEntry(), false);
-                            var firstIndex = name.LastIndexOf('<');
-                            var lastIndex = name.LastIndexOf('>');
-                            if (firstIndex != -1 && lastIndex != -1)
-                            {
-                                var subname = name.Substring(firstIndex + 1, lastIndex - firstIndex - 1);
-
-                                if (ProfessionTrainers.Contains(subname))
-                                    template.NpcFlag |= (uint)NPCFlags.ProfessionTrainer;
-                                else if (ClassTrainers.Contains(subname))
-                                    template.NpcFlag |= (uint)NPCFlags.ClassTrainer;
-                            }
-                        }
-
-                        templates.Add(creatureDiff.Key, template);
-                    }
-                }
-            }
-
-            var templatesDb = SQLDatabase.GetDict<uint, CreatureDifficultyMisc>(templates.Keys(), "Id");
-            return SQLUtil.CompareDicts(templates, templatesDb, StoreNameType.Unit, "Id");
-        }*/
+            var templatesDb = SQLDatabase.Get(Storage.CreatureTemplatesNonWDB);
+            return SQLUtil.Compare(Storage.CreatureTemplatesNonWDB, templatesDb, StoreNameType.Unit);
+        }
 
         static UnitMisc()
         {
@@ -593,7 +569,17 @@ namespace WowPacketParser.SQL.Builders
                     List<int> textList;
                     if (SQLDatabase.BroadcastMaleTexts.TryGetValue(textValue.Item1.Text, out textList) ||
                         SQLDatabase.BroadcastFemaleTexts.TryGetValue(textValue.Item1.Text, out textList))
-                        textValue.Item1.BroadcastTextID = string.Join(" - ", textList);
+                    {
+                        if (textList.Count == 1)
+                            textValue.Item1.BroadcastTextID = (uint)textList.First();
+                        else
+                        {
+                            textValue.Item1.BroadcastTextID = "PLEASE_SET_A_BROADCASTTEXT_ID";
+                            textValue.Item1.BroadcastTextIDHelper = "BroadcastTextID: ";
+                            textValue.Item1.BroadcastTextIDHelper += string.Join(" - ", textList);
+                        }
+
+                    }
 
                     // Set comment
                     string from = null, to = null;
@@ -631,28 +617,42 @@ namespace WowPacketParser.SQL.Builders
             */
 
             var rows = new RowList<CreatureText>();
-            foreach (var text in Storage.CreatureTexts)
+            Dictionary<uint, uint> entryCount = new Dictionary<uint, uint>();
+
+            foreach (var text in Storage.CreatureTexts.OrderBy(t => t.Key))
             {
                 foreach (var textValue in text.Value)
                 {
+                    var count = entryCount.ContainsKey(text.Key) ? entryCount[text.Key] : 0;
+
+                    if (rows.Where(text2 => text2.Data.Text == textValue.Item1.Text).Count() != 0)
+                        continue;
+
                     var row = new Row<CreatureText>
                     {
                         Data = new CreatureText
                         {
                             Entry = text.Key,
-                            GroupId = null,
-                            ID = null,
+                            GroupId = "@GROUP_ID+" + count,
+                            ID = "@ID+",
                             Text = textValue.Item1.Text,
                             Type = textValue.Item1.Type,
                             Language = textValue.Item1.Language,
                             Probability = 100.0f,
-                            Emote = textValue.Item1.Emote,
+                            Emote = (textValue.Item1.Emote != null ? textValue.Item1.Emote : 0),
                             Duration = 0,
-                            Sound = textValue.Item1.Sound,
+                            Sound = (textValue.Item1.Sound != null ? textValue.Item1.Sound : 0),
                             BroadcastTextID = textValue.Item1.BroadcastTextID,
                             Comment = textValue.Item1.Comment
-                        }
+                        },
+
+                        Comment = textValue.Item1.BroadcastTextIDHelper
                     };
+
+                    if (!entryCount.ContainsKey(text.Key))
+                        entryCount.Add(text.Key, count + 1);
+                    else
+                        entryCount[text.Key] = count + 1;
 
                     rows.Add(row);
                 }
